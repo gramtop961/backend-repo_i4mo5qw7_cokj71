@@ -1,8 +1,12 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, EmailStr
+from typing import Optional, Literal
+from database import create_document
+from schemas import Lead
 
-app = FastAPI()
+app = FastAPI(title="LastDrop API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,7 +18,7 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"message": "Hello from FastAPI Backend!"}
+    return {"message": "LastDrop backend up"}
 
 @app.get("/api/hello")
 def hello():
@@ -64,6 +68,21 @@ def test_database():
     
     return response
 
+class LeadIn(BaseModel):
+    name: str
+    email: EmailStr
+    role: Literal["retailer", "consumer", "other"] = "consumer"
+    company: Optional[str] = None
+    message: Optional[str] = None
+    consent: bool = True
+
+@app.post("/api/leads")
+def create_lead(lead: LeadIn):
+    try:
+        lead_id = create_document("lead", lead.model_dump())
+        return {"status": "ok", "id": lead_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
