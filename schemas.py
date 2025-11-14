@@ -12,7 +12,7 @@ Model name is converted to lowercase for the collection name:
 """
 
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, Literal
+from typing import Optional, Literal, List, Dict, Any
 
 # Example schemas (replace with your own):
 
@@ -53,8 +53,41 @@ class Lead(BaseModel):
     message: Optional[str] = Field(None, description="Additional context or message")
     consent: bool = Field(True, description="Agreed to be contacted back")
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Retailer(BaseModel):
+    """
+    Retailer accounts for professional access.
+    Collection name: "retailer"
+    """
+    email: EmailStr = Field(..., description="Login email")
+    password_hash: str = Field(..., description="Password hash with salt, format: salt$hash")
+    company: Optional[str] = Field(None, description="Company name")
+    contact_name: Optional[str] = Field(None, description="Primary contact")
+    role: Literal["retailer"] = Field("retailer", description="Account role")
+
+class Session(BaseModel):
+    """
+    Session tokens for simple auth.
+    Collection name: "session"
+    """
+    token: str = Field(..., description="Bearer token")
+    retailer_id: str = Field(..., description="Retailer document id")
+    expires_at: float = Field(..., description="Unix timestamp expiry")
+
+class OrderItem(BaseModel):
+    sku: str
+    title: str
+    qty: int
+    price: float
+
+class Order(BaseModel):
+    """
+    Orders belonging to a retailer.
+    Collection name: "order"
+    """
+    retailer_id: str = Field(..., description="Retailer document id")
+    order_number: str = Field(..., description="Human readable order number")
+    status: Literal["processing", "shipped", "completed", "cancelled"] = Field("processing")
+    total_amount: float
+    currency: str = Field("EUR")
+    items: List[OrderItem] = Field(default_factory=list)
+    notes: Optional[str] = None
